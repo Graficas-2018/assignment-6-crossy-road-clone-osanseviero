@@ -6,17 +6,23 @@ let score = 0;
 let scoreHtml = null
 let player = null;
 let tree = null;
-let cars = []
+
 
 function run() {
     requestAnimationFrame(function() { run(); });
 
     // Render the scene
     renderer.render(scene, camera);
+
+    // Update the animations
+    KF.update();
+
+    // Check for collisions
+    carCollision();
 }
 
 function reset() {
-	player.position.set(1.5, 2, 15);
+	player.position.set(1.5, 2, 20);
 	score = 0;
 	scoreHtml.html("Score: " + score);
 }
@@ -58,18 +64,6 @@ function loadTree() {
     scene.add(tree);
 }
 
-function createVehicles() {
-	let geometry = new THREE.BoxGeometry(7, 2, 2);
-    let material = new THREE.MeshBasicMaterial({color: 0x159305});
-    let car = new THREE.Mesh(geometry, material);
-    car.position.x = 0;
-    car.position.y = 2;
-    car.position.z = 0;
-
-    scene.add(car);
-    cars.push(car);
-}
-
 function createObjects() {
 	// Create ground
     let map = new THREE.TextureLoader().load('../images/checker_large.gif');
@@ -89,11 +83,14 @@ function createObjects() {
     player = new THREE.Object3D();
     player.castShadow = true;
     player.add(mesh);
-    player.position.set(1.5,2, 15);
+    player.position.set(1.5,2, 20);
     player.add(camera);
+    setAnimations();
     scene.add(player);
 
-    createVehicles();
+    createVehicleRows(3);
+    createWaterLane(2);
+
 }
 
 function main(canvas) {
@@ -112,10 +109,10 @@ function main(canvas) {
 }
 
 function carCollision() {
-	for(car of cars) {
+	for(object of collisionObjects) {
 		let playerbox = new THREE.Box3().setFromObject(player);
-        let carbox = new THREE.Box3().setFromObject(car);
-        if(playerbox.intersectsBox(carbox)){
+        let objectbox = new THREE.Box3().setFromObject(object);
+        if(playerbox.intersectsBox(objectbox)){
             reset();
         }
 	}

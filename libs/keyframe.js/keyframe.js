@@ -1,4 +1,5 @@
 // KeyFrame utility - Simple Key Frame Animation plus Tween.js Easing
+// Modified by franspaco to allow relative animations and callbacks
 var KF = KF || ( function () {
 
 	var animators = [];
@@ -34,6 +35,7 @@ KF.KeyFrameAnimator = function()
 {
 	this.interps = [];
 	this.running = false;
+	this.onEnd = null;
 }
 
 KF.KeyFrameAnimator.prototype.init = function(param)
@@ -57,7 +59,7 @@ KF.KeyFrameAnimator.prototype.createInterpolators = function(interps)
 	{
 		var param = interps[i];
 		var interp = new KF.Interpolator();
-		interp.init({ keys: param.keys, values: param.values, target: param.target });
+		interp.init({ keys: param.keys, values: param.values, target: param.target, relative: param.relative });
 		this.interps.push(interp);
 	}
 }
@@ -71,12 +73,17 @@ KF.KeyFrameAnimator.prototype.start = function()
 	this.startTime = Date.now();
 	this.running = true;
 	KF.add(this);
+	this.interps.forEach(element => {
+		element.resetStart();
+	});
 }
 
 KF.KeyFrameAnimator.prototype.stop = function()
 {
 	this.running = false;
 	KF.remove(this);
+	if(this.onEnd != null)
+		this.onEnd()
 }
 
 // Update - drive key frame evaluation
@@ -101,6 +108,9 @@ KF.KeyFrameAnimator.prototype.update = function()
 			this.interps[i].interp(1);
 		}
 		KF.remove(this);
+		if(this.onEnd != null){
+			this.onEnd()
+		}
 		return;
 	}
 	else
@@ -124,6 +134,8 @@ KF.Interpolator = function()
 	this.values = [];
 	this.target = null;
 	this.running = false;
+	this.relative = false;
+	this.original = {};
 }
 	
 KF.Interpolator.prototype.init = function(param)
@@ -133,9 +145,17 @@ KF.Interpolator.prototype.init = function(param)
 	if (param.keys && param.values)
 	{
 		this.setValue(param.keys, param.values);
-	}	    		
+	}
 
 	this.target = param.target ? param.target : null;
+	this.relative = param.relative? param.relative : false;
+	this.resetStart();
+}
+
+KF.Interpolator.prototype.resetStart = function() {
+	if(this.relative){
+		this.copyValue(this.target, this.original);
+	}
 }
 
 KF.Interpolator.prototype.setValue = function(keys, values)
@@ -175,10 +195,20 @@ KF.Interpolator.prototype.copyValue = function(from, to)
 	for ( var property in from ) {
 		
 		if ( from[ property ] === null ) {		
-		continue;		
+			continue;		
 		}
-
 		to[ property ] = from[ property ];
+	}
+}
+
+KF.Interpolator.prototype.copyToTarget = function(from, to)
+{
+	for ( var property in from ) {
+		
+		if ( from[ property ] === null ) {		
+			continue;		
+		}
+		to[ property ] = this.original[property] + from[ property ];
 	}
 }
 
@@ -211,7 +241,12 @@ KF.Interpolator.prototype.interp = function(fract)
 	
 	if (this.target)
 	{
-		this.copyValue(value, this.target);
+		if(this.relative){
+			this.copyToTarget(value, this.target);
+		}
+		else{
+			this.copyValue(value, this.target);
+		}
 	}
 }
 
