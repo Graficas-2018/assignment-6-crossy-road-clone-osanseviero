@@ -69,7 +69,7 @@ function setAnimations() {
                 relative: true
             }
         ],
-        duration:300,
+        duration:150,
     });
     upAnimator.onEnd = increaseScore;
     player.upAnimation = upAnimator;
@@ -119,7 +119,7 @@ function setAnimations() {
                 relative: true
             }
         ],
-        duration:300,
+        duration:150,
     });
     camera.animation = cameraAnimator;
 

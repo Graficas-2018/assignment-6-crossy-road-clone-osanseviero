@@ -80,9 +80,9 @@ function createScene(canvas) {
  */
 function createObjects() {
     // Create ground
-    let map = new THREE.TextureLoader().load('../images/checker_large.gif');
+    let map = new THREE.TextureLoader().load('../images/grass.jpeg');
     map.wrapS = map.wrapT = THREE.RepeatWrapping;
-    map.repeat.set(8, 8);
+    map.repeat.set(16, 16);
     let material = new THREE.MeshLambertMaterial({map: map});
 
     let ground = new THREE.PlaneGeometry(200, 200, 50, 50);
