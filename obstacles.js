@@ -1,94 +1,217 @@
-let collisionObjects = [];
-let waterLanes = []
-let carGroup = null;
+/*
+ * Crossy Road Clone obstacles generator
+ *
+ * This script has helper functions to create all the lanes, including
+ * the cars, logs, water, and trees. It is reusable to generate as many
+ * lanes as needed, with the restriction that the order is always the same:
+ * TREE -> VEHICLES -> WATER -> TREE.
+ *
+ * Every lane of the same type moves faster. This means that cars and logs
+ * move faster and faster. Additionally, the direction of this objects
+ * alternate with every case of the same type.
+ */
+
+// Arrays that contain the objects
+let cars = [];
+let waterLanes = [];
+let logs = [];
+let trees = [];
 
 
-function animateHorizontalGroup(carGroup, speed, right) {
-    let animator = new KF.KeyFrameAnimator;
-    let x1, x2;
-    if(right) {
-        x1 = -100;
-        x2 = 100;
-    } else {
-        x1 = 100;
-        x2 = -100
-    }
-    animator.init({ 
-        interps: [
-            {
-                keys: [0, 1],
-                values:[
-                        { x : x1 },
-                        { x : x2}
-                ],
-                target: carGroup.position
-            },
-        ],
-        loop: true,
-        duration: 30000/speed
-    });
-    animator.start();
-}
-
-let carspeed = 1.5;
-let lane = 10;
-let carDirection = true;
+/*
+ * Creates the specified number of lanes of cars.
+ */
 function createVehicleRows(lanes) {
+    // Variables that change for each car lane
+    let carSpeed = 1;         // Speed of the cars
+    let carLane = 10;           // The position in z of the lane
+    let carDirection = true;    // True for going from left to right.
+
     for(let i=0; i<lanes; i++) {
-        createVehicles(lane, carspeed, carDirection);
-        carspeed += 0.10;
-        lane -= 20;
+        createVehicles(carLane, carSpeed, carDirection);
+
+        // Increase speed
+        carSpeed += 0.25;
+
+        // Next lane position in z
+        carLane -= 15;
+
+        // Alternate direction
+        carDirection = !carDirection;
     }   
 }
 
+/*
+ * Create the cars of the lane with the animators
+ */
 function createVehicles(lane, speed, right) {
     let geometry = new THREE.BoxGeometry(3, 1, 2);
     let material = new THREE.MeshBasicMaterial({color: 0x159305});
 
-    x = [-20, -10, 0, 5, 10, 15, 20, 30]
-    let carGroup = new THREE.Object3D;
-    carGroup.position.y = 2;
-    carGroup.position.z = lane;
+    // Relative initial and ending positions
+    x = [0, 15, 35, 45, 55, 75];
     for(let i=0; i<x.length; i++) {
+        // Create car object
         let car = new THREE.Mesh(geometry, material);
-        car.position.x = x[i];
-        collisionObjects.push(car);
-        carGroup.add(car);
+        car.position.z = lane;  
+
+        // Create car animator depending on the direction
+        car.animator = new KF.KeyFrameAnimator;
+        if(right) {
+            car.min = -25-x[i];
+            car.max = 110-x[i];
+        } else {
+            car.min = 110-x[i];
+            car.max = -25-x[i];
+        }
+
+        car.animator.init({ 
+            interps: [
+                {
+                    keys: [0, 1],
+                    values:[
+                            { x : car.min },
+                            { x : car.max}
+                    ],
+                    target: car.position
+                },
+            ],
+            loop: true,
+            duration: 10000/speed
+        });
+
+        cars.push(car);
+        car.animator.start();
+        scene.add(car);
     }
-    carDirection = !right;
-    scene.add(carGroup);
-    animateHorizontalGroup(carGroup, carspeed, right);
 }
 
-let logDirection = true;
-let logspeed = 1;
+
+
+/*
+ * Creates the specified number of lanes of cars.
+ */
 function createWaterLane(lanes) {
+    // Variables that change for each water lane
+    let logSpeed = 1;           // Speed of the logs
+    let lane = 0;               // The position in z of the lane
+    let logDirection = true;    // Direction of the logs
+
+    // Create water object
     let geometry = new THREE.BoxGeometry(1000, 0.1, 2);
     let material = new THREE.MeshBasicMaterial({color: 0x18288f});
-    let z = 0;
     for(let i=0; i<lanes; i++) {
+        // Create lane
         let waterLane = new THREE.Mesh(geometry, material);
-        waterLane.position.z = z;
+        waterLane.position.z = lane;
+
+        // Get box for collision (it is fixed for water)
+        waterLane.box = new THREE.Box3().setFromObject(waterLane);
+
+        // Add lane to scene
         scene.add(waterLane);
-        createLogs(z, logspeed, logDirection);
-        z-=20;
+
+        // Create the logs
+        createLogs(lane, logSpeed, logDirection);
+
+        // Increase speed
+        logSpeed += 0.25;
+
+        // Update position in z
+        lane -= 15;
+
+        // Alternate direction of lanes
+        logDirection = !logDirection;
+        
+        waterLanes.push(waterLane);
+        
     }
 }
 
+/*
+ * Creates the logs of a specific lane.
+ */
 function createLogs(lane, speed, right) {
     let geometry = new THREE.BoxGeometry(4, 0.5, 2);
     let material = new THREE.MeshBasicMaterial({color: 0x8e5727});
-    x = [-20, -10, 0, 5, 10, 15, 20, 30]
-    let logGroup = new THREE.Object3D;
-    logGroup.position.y = 0;
-    logGroup.position.z = lane;
-    for(let i=0; i<x.length; i++) {
+
+    // Relative initial and ending positions
+    x = [0, 5, 15, 25, 35, 50, 70];
+    for(let i=0; i<20; i++) {
+        // Create log object
         let log = new THREE.Mesh(geometry, material);
-        log.position.x = x[i];
-        logGroup.add(log);
+        log.position.z = lane;  
+        log.position.y = 0.1
+
+        // Create log animator depending on the direction
+        log.animator = new KF.KeyFrameAnimator;
+        if(right) {
+            log.min = -25-x[i];
+            log.max = 110-x[i];
+        } else {
+            log.min = 110-x[i];
+            log.max = -25-x[i];
+        }
+        
+        log.animator.init({ 
+            interps: [
+                {
+                    keys: [0, 1],
+                    values:[
+                            { x : log.min },
+                            { x : log.max}
+                    ],
+                    target: log.position
+                },
+            ],
+            loop: true,
+            duration: 10000/speed
+        });
+
+        logs.push(log);
+        log.animator.start();
+        scene.add(log);
     }
-    logDirection = !right;
-    scene.add(logGroup);
-    animateHorizontalGroup(logGroup, speed, right);
 }
 
+
+/*
+ * Creates the specified number of lanes of cars.
+ */
+function createForestRows(lanes) {
+    // Variables that change for each forest lane
+    let lane = 5;  // Position in z
+    let treeCount = 3   // Number of trees in the lane
+
+    // Create tree object
+    let geometry = new THREE.BoxGeometry(2, 4, 2);
+    let material = new THREE.MeshBasicMaterial({color: 0x633e1d});
+    
+    for(let i=0; i<lanes; i++) {
+        let treePositions = availablePositions.slice();
+        for(let j=0; j<treeCount; j++) {
+            // Create tree object
+            let tree = new THREE.Mesh(geometry, material);
+            tree.position.z = lane;  
+            tree.position.x = treePositions[Math.floor(Math.random()*(8-j))];
+            tree.position.y = 0;
+            tree.box = new THREE.Box3().setFromObject(tree);
+
+            // Remove element from available positions for this lane
+            treePositions.splice(treePositions.indexOf(tree.position.x), 1);
+
+            scene.add(tree);
+            trees.push(tree);
+        }
+        // Next lane position in z
+        lane -= 15;
+
+        // Increase difficulty as game advances
+        if(i == 1) {
+            treeCount = 4;
+        }
+        else if(i == 3) {
+            treeCount = 5;
+        }
+    }   
+}
